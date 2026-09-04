@@ -1322,7 +1322,7 @@ function tick(){
   document.getElementById('meltStatus').textContent=state.family==='flight'?(progress>=.9?'DESCENDING TO '+state.flightRoute.to.toUpperCase():flightCondition(progress).toUpperCase()+' · CRUISING'):state.flameOut ? 'FLAME OUT · relight when you are ready' : state.paused ? 'PAUSED · take a breath' : (state.activeTool ? TOOLS[state.family][state.activeTool].label+' ON · '+(state.activeTool==='hotWater'?'instant regret':state.activeTool==='heater'?'meltdown!':'a little encouragement') : 'NATURAL PACE · one second at a time');
   document.getElementById('stageLabel').textContent=state.family==='flight'?(state.flightRoute.label+' / '+Math.round(progress*100)+'% OF JOURNEY'):currentDef().label+' / '+((state.family==='ice'?['fresh & frosty','getting drippy','losing its cool','structural crisis','the last little bit']:['freshly lit','softening up','wax on the move','burning low','the last little glow'])[Math.min(4,Math.floor(progress*5))]);
   document.body.classList.toggle('session-paused',state.paused);
-  document.title=(state.paused?'⏸ ':'')+(timerConcealed?'FOCUS IN PROGRESS':fmtHMS(remainingReal)+' left')+' · MELT & BURN';
+  document.title=(state.paused?'⏸ ':'')+(timerConcealed?'FOCUS IN PROGRESS':fmtHMS(remainingReal)+' left')+' · While it Lasts';
 
   if(progress>=1&&!state.finished){if(state.family==='flight')triggerLanding();else finishSession(false);}
 }
@@ -1367,7 +1367,7 @@ function finishSession(abandoned){
   state.running=false;if(state.family==='flight')stopCabinMusic();
   state.finished = true;
   clearInterval(tickInterval);
-  document.title = 'MELT & BURN';
+  document.title = 'While it Lasts';
 
   const def = currentDef();
   const record = {
