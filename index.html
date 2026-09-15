@@ -271,6 +271,34 @@ body.reduced-motion .twinkle,body.reduced-motion .flicker-light{ animation:none 
 #musicEmbedArea{ width:100%; min-height:80px; border:2px dashed var(--outline); display:flex; align-items:center; justify-content:center; font-size:11px; padding:10px; text-align:center;}
 #musicEmbedArea iframe{ width:100%; height:152px; border:none; }
 .music-suggestion{ font-size:11px; margin-top:8px; color:var(--brown-dark); }
+.space-vibe-box{
+  margin-bottom:10px;
+  padding:8px 10px;
+  background:rgba(255,255,255,0.25);
+  border:2px dashed var(--theme-accent, #9a7e7b);
+  border-radius:4px;
+}
+.space-vibe-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+  margin-bottom:4px;
+}
+.space-vibe-title{
+  font-size:11px;
+  font-weight:bold;
+  color:var(--text);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.space-vibe-desc{
+  font-size:10px;
+  opacity:0.85;
+  color:var(--text);
+  line-height:1.3;
+}
 
 .settings-row{ display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:2px dashed var(--outline); font-size:12px;}
 
@@ -553,8 +581,15 @@ body:has(#session.active) .tool-visual{display:none!important}
 <div class="float-window pixel-window" id="musicWindow" style="top:120px;left:200px;">
   <div class="pixel-titlebar" data-drag><span>MUSIC</span><div class="tb-btns"><div class="tb-btn" data-close-float="musicWindow">X</div></div></div>
   <div class="pixel-window-body">
+    <div class="space-vibe-box">
+      <div class="space-vibe-header">
+        <span class="space-vibe-title" id="spaceVibeTitle">SPACE VIBE: Lo-Fi Rain Beats</span>
+        <button class="pixel-btn small" id="playSpaceVibeBtn">PLAY VIBE</button>
+      </div>
+      <div class="space-vibe-desc" id="spaceVibeDesc">Curated background track matching this space's aesthetic.</div>
+    </div>
     <div class="music-row">
-      <input id="musicUrlInput" type="text" placeholder="paste a YouTube or Spotify link...">
+      <input id="musicUrlInput" type="text" placeholder="or paste a custom YouTube/Spotify link...">
       <button class="pixel-btn small" id="musicLoadBtn">LOAD</button>
     </div>
     <div id="musicEmbedArea">no track loaded yet.</div>
@@ -579,18 +614,32 @@ const DEBUG = new URLSearchParams(location.search).get('debug') === '1';
 /* ============================= CONFIG ============================= */
 // Tiers share the same names across families. Durations are ranges (seconds); actual
 // duration is randomized per session and hidden until START is pressed.
-const TIERS = DEBUG ? {
-  small:  { min:20,  max:26 },
-  medium: { min:30,  max:38 },
-  large:  { min:45,  max:56 },
-  xl:     { min:60,  max:75 },
-  giant:  { min:90,  max:110 },
+// Per-family duration tiers (seconds). Each family has different physics.
+const ICE_TIERS = DEBUG ? {
+  small:  { min:18,  max:24 },
+  medium: { min:28,  max:36 },
+  large:  { min:42,  max:54 },
+  xl:     { min:58,  max:72 },
+  giant:  { min:85,  max:110 },
 } : {
-  small:  { min:30*60,  max:45*60 },
-  medium: { min:50*60,  max:90*60 },
-  large:  { min:120*60, max:180*60 },
-  xl:     { min:240*60, max:360*60 },
-  giant:  { min:600*60, max:900*60 },
+  small:  { min:20*60,  max:35*60  }, // Ice Cube: 20–35 min
+  medium: { min:40*60,  max:65*60  }, // Ice Block: 40–65 min
+  large:  { min:75*60,  max:120*60 }, // Ice Slab: 75–120 min
+  xl:     { min:140*60, max:210*60 }, // Ice Formation: 2.3–3.5 hrs
+  giant:  { min:300*60, max:540*60 }, // Glacier: 5–9 hrs
+};
+const CANDLE_TIERS = DEBUG ? {
+  small:  { min:16,  max:22 },
+  medium: { min:26,  max:34 },
+  large:  { min:40,  max:52 },
+  xl:     { min:55,  max:70 },
+  giant:  { min:80,  max:105 },
+} : {
+  small:  { min:25*60,  max:45*60  }, // Bubble Candle: 25–45 min
+  medium: { min:50*60,  max:80*60  }, // Wavy Candle: 50–80 min
+  large:  { min:90*60,  max:150*60 }, // Arch Candle: 1.5–2.5 hrs
+  xl:     { min:180*60, max:270*60 }, // Twisted Pillar: 3–4.5 hrs
+  giant:  { min:300*60, max:480*60 }, // Statement Candle: 5–8 hrs
 };
 const TIER_SCALE = { small:0.72, medium:0.9, large:1.08, xl:1.26, giant:1.48 };
 const TIER_ORDER = ['small','medium','large','xl','giant'];
@@ -950,7 +999,7 @@ function getCandleMask(def){
 }
 
 function drawCandle(canvas,def,progress,mood,windActive){
- const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);c.imageSmoothingEnabled=false;
+ const c=canvas.getContext('2d');c.clearRect(0,0,canvas.width,canvas.height);c.imageSmoothingEnabled=true;
  const live=canvas.id==='objectCanvas'||canvas.id==='completeCanvas', scale=live?1:canvas.width/90;
  c.save();c.scale(scale,scale);
  const cx=live?120:45,base=live?120:canvas.height/scale*.83,p=Math.max(0,Math.min(1,progress));
@@ -960,49 +1009,144 @@ function drawCandle(canvas,def,progress,mood,windActive){
  const r=(x,y,w,h,col)=>px(c,x,y,w,h,col);
  function blob(x,y,w,h,col){for(let yy=0;yy<h;yy+=2){const a=Math.sqrt(Math.max(0,1-((yy-h/2)/(h/2))**2)),ww=Math.round(w*a);r(x-ww/2,y+yy,ww,2,col);}}
  function poly(pts,col){c.fillStyle=col;c.beginPath();pts.forEach(([x,y],i)=>i?c.lineTo(Math.round(x),Math.round(y)):c.moveTo(Math.round(x),Math.round(y)));c.closePath();c.fill();}
- const colors=[['#efb1c0','#b97791','#ffe1d5'],['#b9cdb0','#7f9d8e','#edf1cd'],['#c1b5dc','#8c83ae','#e4d6ef'],['#edc57c','#b3875d','#ffe6b0'],['#abcfdc','#6e9caf','#e0edf0']][tier];
- const [body,shade,shine]=colors;
- // Wide ceramic saucer; wax spreads across its surface and over the front lip.
- blob(cx,base-4,w+35,22,'#42374d');blob(cx,base-4,w+31,18,'#a78eac');blob(cx,base-3,w+25,13,'#ead8c8');
- if(p>0){const wet=Math.pow(p,.65),pw=w*1.7*wet,ph=23*wet;blob(cx,base+1,pw+3,ph+2,shade);blob(cx,base+1,pw,ph,body);if(ph>5){blob(cx,base+2,pw*.68,ph*.35,shine);r(cx-pw*.25,base+2+ph*.6,pw*.2,1,shine);}if(p>.6){blob(cx+pw*.4,base+ph*.7,12*wet,7*wet,body);blob(cx-pw*.35,base+ph*.8,9*wet,5*wet,body);}}
+ const colors=[['#f0b8c8','#c07898','#ffe8e0','#f8d0dc'],['#bcd4b0','#80a08c','#edf5cc','#d4eab8'],['#c4b8e4','#9085b8','#ead8f8','#d4c8ef'],['#f0cc7c','#b89060','#fff0b8','#f8e098'],['#b0d4e4','#70a0b8','#ddf0f8','#c4e4f0']][tier];
+ const [body,shade,shine,accent]=colors;
+
+ // Ceramic saucer base
+ const gSaucer=c.createLinearGradient(cx-w*.75,base-8,cx+w*.75,base+10);
+ gSaucer.addColorStop(0,'#5a4a68');gSaucer.addColorStop(.4,'#c0a0c4');gSaucer.addColorStop(1,'#3a3048');
+ c.fillStyle=gSaucer;c.beginPath();c.ellipse(cx,base+2,w*.85+8,9,0,0,Math.PI*2);c.fill();
+ const gTop=c.createLinearGradient(cx-w*.7,base-5,cx+w*.7,base-5);
+ gTop.addColorStop(0,'#a08898');gTop.addColorStop(.5,'#e8d4cc');gTop.addColorStop(1,'#a08898');
+ c.fillStyle=gTop;c.beginPath();c.ellipse(cx,base-2,w*.7+6,6,0,0,Math.PI*2);c.fill();
+
+ // Melted wax pool on saucer
+ if(p>0){
+   const wet=Math.pow(p,.6),pw=w*1.9*wet+4,ph=20*wet+3;
+   const gPool=c.createRadialGradient(cx-pw*.1,base,1,cx,base+4,pw*.6);
+   gPool.addColorStop(0,shine);gPool.addColorStop(.6,body);gPool.addColorStop(1,shade);
+   c.fillStyle=gPool;c.beginPath();c.ellipse(cx,base+2,pw*.5,ph*.4,0,0,Math.PI*2);c.fill();
+   c.fillStyle='rgba(255,255,255,0.35)';c.beginPath();c.ellipse(cx-pw*.1,base+1,pw*.18,ph*.14,-.4,0,Math.PI*2);c.fill();
+   if(p>.3){for(let i=0;i<3;i++){const ddx=cx+(i-.5)*pw*.38,ddy=base+ph*.38+i*3*wet;blob(ddx,ddy,4+i*2,5+i*3*wet,shade);}}
+ }
+
  if(p<1){
-  // Draw a sculptural candle, clipping only the burnt top rather than scaling its shape.
-  c.save();c.beginPath();c.rect(x-10,top,w+20,h+2);c.clip();
-  const y=base-fullH;
-  if(def.shape==='bubble'){
-   const d=w/2.7;for(let row=0;row<3;row++)for(let col=0;col<3;col++){const bx=x+d*.45+col*d*.92,by=base-d-row*d*.84;blob(bx,by,d+2,d+2,shade);blob(bx-1,by,d,d,body);blob(bx-2,by+2,d*.45,3,shine);}
-  }else if(def.shape==='wavy'){
-   const pts=[];for(let yy=base;yy>=y;yy-=3)pts.push([x+Math.sin(yy*.28)*3,yy]);for(let yy=y;yy<=base;yy+=3)pts.push([x+w+Math.sin(yy*.28)*3,yy]);poly(pts,shade);poly(pts.map(([xx,yy])=>[xx-2,yy]),body);for(let yy=y+3;yy<base;yy+=12){r(x+3,yy,4,8,shine);r(x+w-7,yy+3,3,8,shade);}
-  }else if(def.shape==='arch'){
-   // Arched silhouette with an actual opening under the face.
-   const arch=(inset,col)=>{const ww=w-inset*2,xx=x+inset;poly([[xx,base],[xx,y+ww*.42],[xx+ww*.14,y+ww*.16],[xx+ww*.32,y],[xx+ww*.68,y],[xx+ww*.87,y+ww*.16],[xx+ww,y+ww*.42],[xx+ww,base]],col);};
-   arch(0,shade);arch(3,body);arch(6,shine);arch(9,body);
-   c.clearRect(cx-w*.15,y+fullH*.6,w*.3,fullH*.4);r(cx-w*.15-2,y+fullH*.6,2,fullH*.4,shade);r(cx+w*.15,y+fullH*.6,2,fullH*.4,shade);
-  }else if(def.shape==='twist'){
-   for(let i=0;i<8;i++){let yy=base-(i+1)*fullH/8,off=(i%2?3:-3);blob(cx+off,yy,w,fullH/8+5,shade);blob(cx+off-2,yy,w-4,fullH/8+2,body);r(x+10+off,yy+2,w*.35,2,shine);}
-  }else{
-   for(let i=0;i<3;i++){let ww=w*(1-i*.2),yy=base-fullH*(.36+i*.32);blob(cx,yy,ww,fullH*.38,shade);blob(cx-2,yy,ww-4,fullH*.34,body);r(cx-ww*.27,yy+5,5,fullH*.19,shine);}
-   for(let i=0;i<7;i++)r(x+10+i*7,base-18,2,8,shine);
-  }
-  c.restore();
-  // Melted crown and long uneven wax rivulets.
-  const crownW=def.shape==='statement'?w*.55:def.shape==='arch'&&p<.25?w*.55:w*.88;
-  blob(cx,top-1,crownW,6,shade);blob(cx-1,top-2,crownW-3,4,shine);
-  for(let i=0;i<4;i++){const len=Math.min(h*.62,3+p*fullH*(.3+i*.08));const dx=cx-crownW*.42+i*crownW*.25;r(dx,top+1,3,len,shine);blob(dx+1,top+len-1,4,4,shine);}
-  // Face lives on solid wax, with a gentle expression and little cheek highlights.
-  if(h>10){let fy=top+Math.min(h*.28,17),gap=Math.min(7,w*.17);if(def.shape==='arch'&&p>.32){gap=3;fy=top+6;}
-   const fx=def.shape==='arch'&&p>.32?x+w*.16:cx;
-   r(fx-gap,fy,2,mood==='tired'?1:3,'#4a3b54');r(fx+gap-1,fy,2,mood==='tired'?1:3,'#4a3b54');r(fx-gap-3,fy+4,3,2,'#d68c98');r(fx+gap+1,fy+4,3,2,'#d68c98');r(fx-2,fy+5,1,1,'#4a3b54');r(fx+2,fy+5,1,1,'#4a3b54');r(fx-1,fy+6,3,1,'#4a3b54');
-  }
-  r(cx-1,top-7,2,6,'#58434d');
-  const out=live&&state.flameOut;
-  if(!out){
-   const bend=windActive?6+Math.sin(t*9)*2:Math.sin(t*5)*1.5, fy=top-5;
-   blob(cx,fy-24,38,35,'#ffd67b18');blob(cx,fy-20,27,28,'#ffbe6528');
-   poly([[cx,fy],[cx-6,fy-5],[cx-7+bend*.3,fy-12],[cx+bend,fy-24],[cx+4+bend,fy-15],[cx+7,fy-8],[cx+5,fy-2]],'#d77c52');
-   poly([[cx,fy-1],[cx-4,fy-6],[cx-3+bend*.5,fy-14],[cx+bend,fy-21],[cx+5,fy-8],[cx+3,fy-3]],'#ffd374');
-   poly([[cx,fy-2],[cx-2,fy-6],[cx+1,fy-13],[cx+3,fy-6]],'#fff5c8');
-  }else for(let i=0;i<5;i++){const q=(Date.now()/1800+i*.2)%1;r(cx+Math.sin(q*7)*4,top-10-q*22,3,4,'#dfd9e080');}
+   // Candle body with shape clipping as wax burns down
+   c.save();c.beginPath();c.rect(x-10,top,w+20,h+2);c.clip();
+   const y=base-fullH;
+
+   if(def.shape==='bubble'){
+     const d=w/2.5;
+     for(let row=0;row<3;row++) for(let col=0;col<3;col++){
+       const bx=x+d*.38+col*d*.95,by=base-d*.9-row*d*.85;
+       const gr=c.createRadialGradient(bx-d*.2,by-d*.2,d*.05,bx,by,d*.55);
+       gr.addColorStop(0,shine);gr.addColorStop(.4,accent);gr.addColorStop(.7,body);gr.addColorStop(1,shade);
+       c.fillStyle=gr;c.beginPath();c.arc(bx,by,d*.52,0,Math.PI*2);c.fill();
+       c.fillStyle='rgba(255,255,255,0.55)';c.beginPath();c.arc(bx-d*.16,by-d*.16,d*.11,0,Math.PI*2);c.fill();
+     }
+   }else if(def.shape==='wavy'){
+     const pts=[];for(let yy=base;yy>=y;yy-=2)pts.push([x+Math.sin(yy*.28)*4.5,yy]);
+     for(let yy=y;yy<=base;yy+=2)pts.push([x+w+Math.sin(yy*.28)*4.5,yy]);
+     const g=c.createLinearGradient(x,y,x+w,y);
+     g.addColorStop(0,shade);g.addColorStop(.3,body);g.addColorStop(.6,accent);g.addColorStop(1,shade);
+     c.fillStyle=g;c.beginPath();pts.forEach(([px2,py2],i)=>i?c.lineTo(px2,py2):c.moveTo(px2,py2));c.closePath();c.fill();
+     for(let yy=y+6;yy<base;yy+=14){
+       c.fillStyle='rgba(255,255,255,0.22)';c.fillRect(x+2,yy,5,8);
+       c.fillStyle=shade+'88';c.fillRect(x+w-6,yy+3,4,8);
+     }
+   }else if(def.shape==='arch'){
+     const arch=(inset,col)=>{const ww=w-inset*2,xx=x+inset;poly([[xx,base],[xx,y+ww*.42],[xx+ww*.14,y+ww*.16],[xx+ww*.32,y],[xx+ww*.68,y],[xx+ww*.87,y+ww*.16],[xx+ww,y+ww*.42],[xx+ww,base]],col);};
+     arch(0,shade);arch(3,body);arch(6,accent);
+     const g=c.createLinearGradient(x,y,x+w,y);
+     g.addColorStop(0,'rgba(0,0,0,0.15)');g.addColorStop(.35,'rgba(255,255,255,0.18)');g.addColorStop(.7,'rgba(0,0,0,0.08)');
+     c.fillStyle=g;c.beginPath();c.rect(x,y,w,fullH);c.fill();
+     c.clearRect(cx-w*.15,y+fullH*.6,w*.3,fullH*.4);r(cx-w*.15-2,y+fullH*.6,2,fullH*.4,shade);r(cx+w*.15,y+fullH*.6,2,fullH*.4,shade);
+     c.strokeStyle='rgba(0,0,0,0.12)';c.lineWidth=1;
+     for(let i=1;i<4;i++){c.beginPath();c.moveTo(x+i*(w/4),base);c.lineTo(x+i*(w/4),y+fullH*.5);c.stroke();}
+   }else if(def.shape==='twist'){
+     for(let i=0;i<8;i++){
+       const segY=base-(i+1)*fullH/8,off=(i%2?4:-4);
+       const g=c.createLinearGradient(cx+off-w/2,segY,cx+off+w/2,segY);
+       g.addColorStop(0,shade);g.addColorStop(.35,body);g.addColorStop(.65,accent);g.addColorStop(1,shade);
+       c.fillStyle=g;c.beginPath();c.ellipse(cx+off,segY,w*.52,fullH/16+3,0,0,Math.PI*2);c.fill();
+       c.fillStyle='rgba(255,255,255,0.2)';c.beginPath();c.ellipse(cx+off-w*.15,segY-2,w*.12,fullH/32,0,0,Math.PI*2);c.fill();
+     }
+   }else{
+     for(let i=0;i<3;i++){
+       const ww=w*(1-i*.18),yy=base-fullH*(.38+i*.31);
+       const g=c.createLinearGradient(cx-ww/2,yy,cx+ww/2,yy);
+       g.addColorStop(0,shade);g.addColorStop(.28,body);g.addColorStop(.6,accent);g.addColorStop(1,shade);
+       c.fillStyle=g;c.beginPath();c.roundRect(cx-ww/2,yy-fullH*.2,ww,fullH*.4,6);c.fill();
+       c.fillStyle='rgba(255,255,255,0.2)';c.fillRect(cx-ww*.24,yy-fullH*.18,ww*.08,fullH*.3);
+     }
+     c.fillStyle='rgba(255,255,255,0.4)';
+     for(let i=0;i<7;i++)c.fillRect(x+9+i*7,base-16,2,7);
+   }
+   c.restore();
+
+   // Melted crown
+   const crownW=def.shape==='statement'?w*.58:def.shape==='arch'&&p<.25?w*.58:w*.9;
+   const gCrown=c.createLinearGradient(cx-crownW/2,top-4,cx+crownW/2,top);
+   gCrown.addColorStop(0,shade);gCrown.addColorStop(.5,shine);gCrown.addColorStop(1,shade);
+   c.fillStyle=gCrown;c.beginPath();c.ellipse(cx,top-1,crownW*.5,5,0,0,Math.PI*2);c.fill();
+
+   // Wax rivulets (wax drips) that grow longer as burn progresses
+   const rivCount=4;
+   for(let i=0;i<rivCount;i++){
+     const seed=(i*.37+def.key.charCodeAt(0)*.011)%1;
+     const dx=cx-crownW*.44+i*(crownW*.24+seed*8);
+     const len=Math.min(h*.72,4+p*fullH*(.32+seed*.12));
+     const gRiv=c.createLinearGradient(dx,top,dx+4,top+len);
+     gRiv.addColorStop(0,shine);gRiv.addColorStop(1,body);
+     c.fillStyle=gRiv;c.fillRect(dx,top+2,3+seed*2,len);
+     const dripW=5+seed*3,dripH=6+seed*4;
+     const gr2=c.createRadialGradient(dx+1,top+len+dripH*.4,1,dx+1,top+len+dripH*.4,dripW*.5);
+     gr2.addColorStop(0,shine);gr2.addColorStop(1,body);
+     c.fillStyle=gr2;c.beginPath();c.ellipse(dx+1,top+len+dripH*.3,dripW*.45,dripH*.5,0,0,Math.PI*2);c.fill();
+   }
+
+   // Candle face
+   if(h>10){
+     let fy=top+Math.min(h*.28,17),gap=Math.min(7,w*.17);
+     if(def.shape==='arch'&&p>.32){gap=3;fy=top+6;}
+     const fx=def.shape==='arch'&&p>.32?x+w*.16:cx;
+     r(fx-gap,fy,2,mood==='tired'?1:3,'#4a3b54');r(fx+gap-1,fy,2,mood==='tired'?1:3,'#4a3b54');
+     r(fx-gap-3,fy+4,3,2,'#d68c98');r(fx+gap+1,fy+4,3,2,'#d68c98');
+     r(fx-2,fy+5,1,1,'#4a3b54');r(fx+2,fy+5,1,1,'#4a3b54');r(fx-1,fy+6,3,1,'#4a3b54');
+   }
+
+   // Wick
+   r(cx-1,top-8,2,7,'#3a2d36');
+
+   // Flame: 3-layer animated bezier flame with warm ambient glow
+   const out=live&&state.flameOut;
+   if(!out){
+     const bend=windActive?7+Math.sin(t*10)*2.5:Math.sin(t*5.3)*1.8+Math.sin(t*3.1)*.8;
+     const fy=top-7;
+     // Ambient glow halo
+     const gHalo=c.createRadialGradient(cx+bend*.4,fy-16,1,cx+bend*.3,fy-14,22);
+     gHalo.addColorStop(0,'rgba(255,200,80,0.35)');gHalo.addColorStop(.5,'rgba(255,140,40,0.12)');gHalo.addColorStop(1,'rgba(255,100,20,0)');
+     c.fillStyle=gHalo;c.beginPath();c.ellipse(cx+bend*.3,fy-14,22,26,bend*.04,0,Math.PI*2);c.fill();
+     // Outer flame body (deep amber/orange)
+     c.save();c.beginPath();
+     c.moveTo(cx,fy);c.bezierCurveTo(cx-8,fy-8,cx-9+bend*.5,fy-18,cx+bend,fy-28);
+     c.bezierCurveTo(cx+bend+5,fy-18,cx+9,fy-8,cx+2,fy);c.closePath();
+     const gFlame=c.createLinearGradient(cx,fy,cx+bend*.5,fy-28);
+     gFlame.addColorStop(0,'#c04010');gFlame.addColorStop(.3,'#e8742a');gFlame.addColorStop(.65,'#f5b840');gFlame.addColorStop(1,'#fff0a0');
+     c.fillStyle=gFlame;c.fill();c.restore();
+     // Inner flame core (bright warm yellow)
+     c.save();c.beginPath();
+     c.moveTo(cx,fy-1);c.bezierCurveTo(cx-4,fy-9,cx-3+bend*.5,fy-16,cx+bend*.7,fy-23);
+     c.bezierCurveTo(cx+bend*.7+3,fy-16,cx+5,fy-8,cx+1,fy-1);c.closePath();
+     const gInner=c.createLinearGradient(cx,fy,cx+bend*.4,fy-23);
+     gInner.addColorStop(0,'#f59030');gInner.addColorStop(.4,'#ffd060');gInner.addColorStop(1,'#fffff0');
+     c.fillStyle=gInner;c.fill();c.restore();
+     // Hot white core
+     c.save();c.beginPath();
+     c.moveTo(cx,fy-3);c.bezierCurveTo(cx-2,fy-9,cx+bend*.5,fy-17,cx+bend*.6,fy-19);
+     c.bezierCurveTo(cx+bend*.6+2,fy-15,cx+3,fy-8,cx,fy-3);
+     c.closePath();c.fillStyle='rgba(255,255,230,0.85)';c.fill();c.restore();
+   }else for(let i=0;i<5;i++){const q=(Date.now()/1800+i*.2)%1;r(cx+Math.sin(q*7)*4,top-10-q*22,3,4,'#dfd9e080');}
  }
  if(live&&state.activeTool){
   if(state.activeTool==='warmer')drawSceneTool(c,'warmer',t,cx,base);
@@ -1078,7 +1222,230 @@ function buildSizeScreen(){
 }
 
 function buildFlightTickets(){state.flightRoute=null;const grid=document.getElementById('sizeGrid');grid.innerHTML='';document.getElementById('sizeTitle').textContent='CHOOSE YOUR BOARDING PASS';document.querySelector('#sizes .subtitle').textContent='all flights leave Mumbai. destination is yours; flight time stays hidden.';const picks=['Delhi','Tokyo','Singapore','Paris','Seoul','Reykjavík'];picks.forEach((to,i)=>{const card=document.createElement('div');card.className='boarding-pass';card.innerHTML=`<div class="ticket-top"><b>MB ${String(107+i*83).padStart(3,'0')}</b><span>BOARDING PASS</span></div><div class="ticket-route"><strong>BOM</strong><i>✈</i><strong>${['DEL','HND','SIN','CDG','ICN','KEF'][i]}</strong></div><div class="ticket-cities"><span>Mumbai</span><span>${to}</span></div><div class="ticket-bottom"><span>GATE ${String.fromCharCode(65+i)}${i+2}</span><span>TIME: SECRET</span></div>`;card.onclick=()=>{state.flightRoute={from:'Mumbai',to,label:'MUMBAI → '+to.toUpperCase()};openFlightPrecompose()};grid.appendChild(card)})}
-function beginTakeoff(){const ctx=getAudioCtx();ctx?.resume();const route=state.flightRoute;document.getElementById('takeoffRoute').textContent=route.label;document.querySelector('#takeoffScreen .takeoff-kicker').textContent='DEPARTING '+route.from.toUpperCase();document.getElementById('takeoffMessage').textContent='TAKING OFF TO '+route.to.toUpperCase()+'...';drawFlightPreview(document.getElementById('takeoffCanvas'),false);showScreen('takeoffScreen');setTimeout(beginSession,2200)}
+let takeoffAnim=null;
+function animateTakeoffCanvas(canvas,landing){
+  if(takeoffAnim)cancelAnimationFrame(takeoffAnim);
+  let startTime=null;
+  const dur=3200;
+  function frame(ts){
+    if(!startTime)startTime=ts;
+    const prog=Math.min(1,(ts-startTime)/dur);
+    // Smooth ease in-out
+    const ease=prog<.5?2*prog*prog:1-Math.pow(-2*prog+2,2)/2;
+    const c=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+    c.clearRect(0,0,W,H);
+
+    if(landing){
+      // ── LANDING SKY & SCENERY ──
+      const skyG=c.createLinearGradient(0,0,0,H);
+      skyG.addColorStop(0,'#35526e');skyG.addColorStop(.45,'#6d98ba');skyG.addColorStop(1,'#d2cbb5');
+      c.fillStyle=skyG;c.fillRect(0,0,W,H);
+
+      // Distant clouds
+      const cOff=ease*W*1.4;
+      [[50,30,42],[120,22,34],[210,38,48],[290,26,38],[380,42,40]].forEach(([cx,cy,cr])=>{
+        c.fillStyle='rgba(255,255,255,0.45)';c.beginPath();
+        c.ellipse((cx+cOff)%(W+80)-40,cy,cr,cr*.45,0,0,Math.PI*2);c.fill();
+        c.ellipse((cx+cOff+cr*.5)%(W+80)-40,cy+4,cr*.65,cr*.35,0,0,Math.PI*2);c.fill();
+      });
+
+      // Approaching terrain and runway
+      const groundY=H*(0.48+ease*.15);
+      const gGround=c.createLinearGradient(0,groundY,0,H);
+      gGround.addColorStop(0,'#6d8558');gGround.addColorStop(.4,'#536b42');gGround.addColorStop(1,'#3b4e2e');
+      c.fillStyle=gGround;c.fillRect(0,groundY,W,H-groundY);
+
+      // Runway perspective trapezoid
+      const rwyTopY=groundY+6;
+      const rwyTopW=W*(0.14+ease*.24);
+      const rwyBotW=W*(0.35+ease*.45);
+      c.fillStyle='#44434f';
+      c.beginPath();
+      c.moveTo(W/2-rwyTopW/2, rwyTopY);
+      c.lineTo(W/2+rwyTopW/2, rwyTopY);
+      c.lineTo(W/2+rwyBotW/2, H);
+      c.lineTo(W/2-rwyBotW/2, H);
+      c.closePath();c.fill();
+
+      // Runway markings (center line dashes)
+      c.fillStyle='#f0ecd0';
+      const dashes=7;
+      for(let i=0;i<dashes;i++){
+        const frac=i/dashes;
+        const dy=rwyTopY+frac*(H-rwyTopY);
+        const dw=4+frac*12, dh=5+frac*10;
+        c.fillRect(W/2-dw/2, dy, dw, dh);
+      }
+
+      // Runway edge lights
+      for(let i=0;i<6;i++){
+        const frac=i/6;
+        const ey=rwyTopY+frac*(H-rwyTopY);
+        const ew=rwyTopW/2+frac*(rwyBotW/2-rwyTopW/2);
+        c.fillStyle=(Math.floor(ts/250)+i)%2?'#ffea78':'#ffaa34';
+        c.beginPath();c.arc(W/2-ew-3,ey,2+frac*2,0,Math.PI*2);c.fill();
+        c.beginPath();c.arc(W/2+ew+3,ey,2+frac*2,0,Math.PI*2);c.fill();
+      }
+
+      // Airplane Landing trajectory: high descent -> glide slope -> flare & touchdown at ease ~0.65 -> roll
+      let px, py, angle, gearDown=true;
+      if(ease<.65){
+        const f=ease/.65;
+        px=W*(.8-f*.48);
+        py=H*(.12+f*.62);
+        angle=0.18-f*.08;
+      } else {
+        const f=(ease-.65)/.35;
+        px=W*(.32+f*.18);
+        py=H*(.74-f*.03);
+        angle=0.04-f*.04;
+      }
+
+      // Touchdown smoke puff at wheels
+      if(ease>=.62 && ease<=.85){
+        const smokeProg=(ease-.62)/.23;
+        for(let i=0;i<4;i++){
+          const sox=px-14-i*6*smokeProg;
+          const soy=py+12-i*3*smokeProg;
+          const sr=4+smokeProg*10+i*2;
+          c.fillStyle=`rgba(235,235,240,${(1-smokeProg)*.55})`;
+          c.beginPath();c.arc(sox,soy,sr,0,Math.PI*2);c.fill();
+        }
+      }
+
+      // Draw Airplane
+      c.save();c.translate(px,py);c.rotate(angle);
+      // Wheels
+      if(gearDown){
+        c.fillStyle='#2b2a33';
+        c.fillRect(-4,10,3,6);c.fillRect(6,10,3,6);
+        c.beginPath();c.arc(-2.5,16,3,0,Math.PI*2);c.fill();
+        c.beginPath();c.arc(7.5,16,3,0,Math.PI*2);c.fill();
+      }
+      // Fuselage
+      c.fillStyle='#f5eee3';c.strokeStyle='#3d3b50';c.lineWidth=1.5;
+      c.beginPath();c.ellipse(0,0,28,8,0,0,Math.PI*2);c.fill();c.stroke();
+      // Cockpit window
+      c.fillStyle='#6cb0d6';c.beginPath();c.ellipse(18,-2,5,3,0.3,0,Math.PI*2);c.fill();
+      // Passenger windows
+      c.fillStyle='#4a485a';
+      for(let i=0;i<5;i++)c.fillRect(-12+i*5,-2,2,3);
+      // Tail fin
+      c.fillStyle='#e68a70';c.beginPath();
+      c.moveTo(-20,-4);c.lineTo(-26,-18);c.lineTo(-14,-18);c.lineTo(-11,-4);c.closePath();c.fill();c.stroke();
+      // Main wing
+      c.fillStyle='#d2d4d8';c.strokeStyle='#3d3b50';c.lineWidth=1;
+      c.beginPath();c.moveTo(2,3);c.lineTo(-12,18);c.lineTo(10,6);c.closePath();c.fill();c.stroke();
+      c.restore();
+
+    } else {
+      // ── TAKEOFF SKY & SCENERY ──
+      const skyG=c.createLinearGradient(0,0,0,H);
+      skyG.addColorStop(0,'#151c33');skyG.addColorStop(.4,'#2d4a75');skyG.addColorStop(1,'#5c8cb5');
+      c.fillStyle=skyG;c.fillRect(0,0,W,H);
+
+      // Stars in upper sky that fade as we climb
+      c.fillStyle='rgba(255,255,255,0.7)';
+      [[30,20],[75,35],[140,15],[190,40],[220,18],[40,60],[110,50],[170,70]].forEach(([sx,sy])=>{
+        c.fillRect(sx,sy,1.5,1.5);
+      });
+
+      // Clouds moving down & left as plane climbs up & right
+      const cOff=-ease*W*1.2;
+      [[50,60,40],[140,45,46],[240,70,52],[330,55,42],[410,75,48]].forEach(([cx,cy,cr])=>{
+        c.fillStyle='rgba(255,255,255,0.5)';c.beginPath();
+        c.ellipse((cx+cOff)%(W+100)-30,cy+ease*H*.3,cr,cr*.42,0,0,Math.PI*2);c.fill();
+      });
+
+      // Ground / Runway below
+      const groundY=H*(0.72-ease*.45);
+      if(groundY<H){
+        const gGround=c.createLinearGradient(0,groundY,0,H);
+        gGround.addColorStop(0,'#7b9462');gGround.addColorStop(.4,'#5c7546');gGround.addColorStop(1,'#3c502b');
+        c.fillStyle=gGround;c.fillRect(0,Math.max(0,groundY),W,H);
+
+        // Runway receding
+        const rwy=groundY+4;
+        c.fillStyle='#44434f';
+        c.fillRect(0,rwy,W,H-rwy);
+        c.fillStyle='#f0ecd0';
+        for(let i=0;i<10;i++){
+          const rx=(i*34-ease*W*2.5)%(W+50);
+          c.fillRect(rx,rwy+12,18,5);
+        }
+      }
+
+      // Airplane Takeoff: rolls on runway -> pitches up at ease ~0.32 -> climbs steeply into the clouds
+      let px, py, angle, gearDown;
+      if(ease<.32){
+        const f=ease/.32;
+        px=W*(.12+f*.25);
+        py=H*(.75);
+        angle=0;
+        gearDown=true;
+      } else {
+        const f=(ease-.32)/.68;
+        px=W*(.37+f*.45);
+        py=H*(.75-f*.62);
+        angle=-0.32+f*.08;
+        gearDown=f<.25;
+      }
+
+      // Jet exhaust trail puffs
+      if(ease>.25){
+        for(let i=0;i<6;i++){
+          const tr=i/6;
+          const ox=px-26*Math.cos(angle)-tr*45*(1+ease*.5);
+          const oy=py-26*Math.sin(angle)+tr*15;
+          const rad=3+tr*10;
+          c.fillStyle=`rgba(215,225,240,${(1-tr)*.42})`;
+          c.beginPath();c.arc(ox,oy,rad,0,Math.PI*2);c.fill();
+        }
+      }
+
+      // Draw Airplane
+      c.save();c.translate(px,py);c.rotate(angle);
+      // Wheels
+      if(gearDown){
+        c.fillStyle='#2b2a33';
+        c.fillRect(-4,9,3,5);c.fillRect(6,9,3,5);
+        c.beginPath();c.arc(-2.5,14,2.5,0,Math.PI*2);c.fill();
+        c.beginPath();c.arc(7.5,14,2.5,0,Math.PI*2);c.fill();
+      }
+      // Fuselage
+      c.fillStyle='#f5eee3';c.strokeStyle='#3d3b50';c.lineWidth=1.5;
+      c.beginPath();c.ellipse(0,0,28,8,0,0,Math.PI*2);c.fill();c.stroke();
+      // Cockpit window
+      c.fillStyle='#6cb0d6';c.beginPath();c.ellipse(18,-2,5,3,0.3,0,Math.PI*2);c.fill();
+      // Passenger windows
+      c.fillStyle='#4a485a';
+      for(let i=0;i<5;i++)c.fillRect(-12+i*5,-2,2,3);
+      // Tail fin with accent stripe
+      c.fillStyle='#e68a70';c.beginPath();
+      c.moveTo(-20,-4);c.lineTo(-26,-18);c.lineTo(-14,-18);c.lineTo(-11,-4);c.closePath();c.fill();c.stroke();
+      // Main wing
+      c.fillStyle='#d2d4d8';c.strokeStyle='#3d3b50';c.lineWidth=1;
+      c.beginPath();c.moveTo(2,3);c.lineTo(-12,18);c.lineTo(10,6);c.closePath();c.fill();c.stroke();
+      c.restore();
+    }
+
+    if(prog<1)takeoffAnim=requestAnimationFrame(frame);
+  }
+  takeoffAnim=requestAnimationFrame(frame);
+}
+
+function beginTakeoff(){
+  const audioCtx=getAudioCtx();audioCtx?.resume();
+  const route=state.flightRoute;
+  document.getElementById('takeoffRoute').textContent=route.label;
+  document.querySelector('#takeoffScreen .takeoff-kicker').textContent='DEPARTING '+route.from.toUpperCase();
+  document.getElementById('takeoffMessage').textContent='TAKING OFF TO '+route.to.toUpperCase()+'...';
+  const canvas=document.getElementById('takeoffCanvas');
+  canvas.width=250;canvas.height=167;
+  animateTakeoffCanvas(canvas,false);
+  showScreen('takeoffScreen');
+  setTimeout(beginSession,3200);
+}
 
 function openFlightPrecompose(){state.sizeKey='flight';document.getElementById('preName').textContent=state.flightRoute?.label||'MYSTERY FLIGHT';document.getElementById('preMystery').textContent='boarding pass confirmed. flight time stays secret.';const canvas=document.getElementById('preCanvas');canvas.width=180;canvas.height=120;canvas.style.width='230px';canvas.style.height='154px';drawFlightPreview(canvas,true);document.getElementById('taskInput').value='';document.getElementById('startSessionBtn').textContent='BOARD FLIGHT';showScreen('precompose');}
 
@@ -1105,8 +1472,22 @@ function currentMultiplier(){
 }
 function randDuration(tierKey){
   if(DEBUG) return tierKey==='flight'?180:60;
-  if(tierKey==='flight'){const r=Math.random(),m=r<.01?5+Math.random()*15:r<.06?20+Math.random()*30:r<.86?60+Math.random()*60:r<.96?120+Math.random()*120:r<.995?240+Math.random()*180:420+Math.random()*180;return Math.round(m*60);}
-  const t = TIERS[tierKey];
+  if(tierKey==='flight'){
+    // Distribution: ~4% short (8–20min), ~5% domestic (20–45min),
+    // ~63% standard (1–2.5hr), ~18% medium-haul (2.5–4hr),
+    // ~7% long-haul (4–8hr), ~3% ultra-long (8–14hr)
+    const r=Math.random();
+    let m;
+    if(r<.04)       m=8+Math.random()*12;      // rare short: 8–20 min
+    else if(r<.09)  m=20+Math.random()*25;     // domestic: 20–45 min
+    else if(r<.72)  m=60+Math.random()*90;     // standard: 1–2.5 hr
+    else if(r<.90)  m=150+Math.random()*90;    // medium-haul: 2.5–4 hr
+    else if(r<.97)  m=240+Math.random()*240;   // long-haul: 4–8 hr
+    else            m=480+Math.random()*360;   // ultra-long: 8–14 hr
+    return Math.round(m*60);
+  }
+  const tiers = state.family==='candle' ? CANDLE_TIERS : ICE_TIERS;
+  const t = tiers[tierKey];
   const secs = t.min + Math.random()*(t.max-t.min);
   return Math.round(secs);
 }
@@ -1329,9 +1710,18 @@ function tick(){
 
 function triggerLanding(){
   if(state.landing)return;state.landing=true;state.running=false;clearInterval(tickInterval);
-  const route=state.flightRoute;document.querySelector('#takeoffScreen .takeoff-kicker').textContent='PREPARE FOR ARRIVAL';document.getElementById('takeoffRoute').textContent=route.label;document.getElementById('takeoffMessage').textContent='LANDING IN '+route.to.toUpperCase()+'...';
-  const canvas=document.getElementById('takeoffCanvas');drawFlightScene(canvas,1);showScreen('takeoffScreen');
-  setTimeout(()=>{document.querySelector('#takeoffScreen .takeoff-kicker').textContent='NOW BOARDING';finishSession(false)},2200);
+  const route=state.flightRoute;
+  document.querySelector('#takeoffScreen .takeoff-kicker').textContent='PREPARE FOR ARRIVAL';
+  document.getElementById('takeoffRoute').textContent=route.label;
+  document.getElementById('takeoffMessage').textContent='LANDING IN '+route.to.toUpperCase()+'...';
+  const canvas=document.getElementById('takeoffCanvas');
+  canvas.width=250;canvas.height=167;
+  animateTakeoffCanvas(canvas,true);
+  showScreen('takeoffScreen');
+  setTimeout(()=>{
+    document.querySelector('#takeoffScreen .takeoff-kicker').textContent='NOW BOARDING';
+    finishSession(false);
+  },3400);
 }
 
 document.getElementById('timerToggleBtn').addEventListener('click',()=>{state.timerHidden=!state.timerHidden;tick();});
@@ -1364,7 +1754,7 @@ document.getElementById('giveUpBtn').addEventListener('click', ()=> finishSessio
 function finishSession(abandoned){
   if(state.finished) return;
   advanceClock();
-  state.running=false;if(state.family==='flight')stopCabinMusic();
+  state.running=false;if(state.family==='flight')stopCabinMusic();if(vibeActive) stopSpaceVibe();
   state.finished = true;
   clearInterval(tickInterval);
   document.title = 'While it Lasts';
@@ -1682,6 +2072,7 @@ function applySpace(key){
   document.documentElement.style.setProperty('--theme-accent', spaceDef.theme.a);
   document.documentElement.style.setProperty('--theme-accent2', spaceDef.theme.a2);
   document.getElementById('musicSuggestion').textContent = SPACE_MUSIC_HINT[key] || '';
+  updateSpaceMusicUI(key);
 }
 
 function buildFlightSpaceGrid(){
@@ -1864,6 +2255,87 @@ notesArea.addEventListener('input', ()=>{
 });
 
 /* ============================= MUSIC ============================= */
+const SPACE_DEFAULT_MUSIC = {
+  rainyBedroom: {
+    title: 'Lo-Fi Rain Study Beats',
+    desc: 'Gentle rainy window acoustic lo-fi hip hop to focus to.',
+    embedUrl: 'https://www.youtube.com/embed/jfKfPfyJRdk'
+  },
+  vintageCafe: {
+    title: 'Warm Jazz Cafe Ambience',
+    desc: 'Cozy jazz piano, soft background murmur, and warm cafe vibes.',
+    embedUrl: 'https://www.youtube.com/embed/Dx5qFachd3A'
+  },
+  coffeeShop: {
+    title: 'Coffee Shop Indie Beats',
+    desc: 'Light acoustic rhythms and uplifting modern focus tunes.',
+    embedUrl: 'https://www.youtube.com/embed/WPni755-Krg'
+  },
+  library: {
+    title: 'Quiet Classical Reading Room',
+    desc: 'Soft piano sonatas and subtle crackling fireplace.',
+    embedUrl: 'https://www.youtube.com/embed/4xDzrJKXOOY'
+  },
+  forest: {
+    title: 'Forest Birdsong & Brook',
+    desc: 'Gentle rustling canopy, flowing brook, and woodland birds.',
+    embedUrl: 'https://www.youtube.com/embed/eKFTSSKCzWA'
+  },
+  rooftop: {
+    title: 'Sunset Chillhop Radio',
+    desc: 'Warm golden hour chords and mellow evening study beats.',
+    embedUrl: 'https://www.youtube.com/embed/TURbeWK2wwg'
+  },
+  flightCabin: {
+    title: 'Cabin Hum & Cloud Ambient',
+    desc: 'Deep relaxing jet engine white noise and soft atmospheric hum.',
+    embedUrl: 'https://www.youtube.com/embed/co7KgV24v6g'
+  }
+};
+
+let currentVibeKey = null;
+let vibeActive = false;
+
+function playSpaceVibe(key){
+  const vibe = SPACE_DEFAULT_MUSIC[key] || SPACE_DEFAULT_MUSIC['rainyBedroom'];
+  if(!vibe) return;
+  const area = document.getElementById('musicEmbedArea');
+  const btn = document.getElementById('playSpaceVibeBtn');
+  if(!area) return;
+
+  currentVibeKey = key;
+  vibeActive = true;
+  area.innerHTML = '';
+  const iframe = document.createElement('iframe');
+  iframe.src = vibe.embedUrl + '?autoplay=1&enablejsapi=1';
+  iframe.allow = 'autoplay; encrypted-media';
+  iframe.title = vibe.title;
+  area.appendChild(iframe);
+  if(btn) btn.textContent = 'STOP VIBE';
+}
+
+function stopSpaceVibe(){
+  const area = document.getElementById('musicEmbedArea');
+  const btn = document.getElementById('playSpaceVibeBtn');
+  vibeActive = false;
+  if(area) area.innerHTML = '<span style="font-size:11px;opacity:0.8;">vibe paused. click PLAY VIBE to resume.</span>';
+  if(btn) btn.textContent = 'PLAY VIBE';
+}
+
+function updateSpaceMusicUI(key){
+  const vibe = SPACE_DEFAULT_MUSIC[key] || SPACE_DEFAULT_MUSIC['rainyBedroom'];
+  if(!vibe) return;
+  const titleEl = document.getElementById('spaceVibeTitle');
+  const descEl = document.getElementById('spaceVibeDesc');
+  const btn = document.getElementById('playSpaceVibeBtn');
+  if(titleEl) titleEl.textContent = 'SPACE VIBE: ' + vibe.title;
+  if(descEl) descEl.textContent = vibe.desc;
+  if(vibeActive && currentVibeKey !== key){
+    playSpaceVibe(key);
+  } else if(!vibeActive && btn){
+    btn.textContent = 'PLAY VIBE';
+  }
+}
 function toEmbedUrl(raw){
   try{
     const u = new URL(raw);
@@ -1881,7 +2353,19 @@ function toEmbedUrl(raw){
   }catch(e){}
   return null;
 }
+document.getElementById('playSpaceVibeBtn').addEventListener('click', ()=>{
+  const key = state.family==='flight' ? 'flightCabin' : (state.spaceKey || 'rainyBedroom');
+  if(vibeActive){
+    stopSpaceVibe();
+  } else {
+    playSpaceVibe(key);
+  }
+});
+
 document.getElementById('musicLoadBtn').addEventListener('click', ()=>{
+  vibeActive = false;
+  const vibeBtn = document.getElementById('playSpaceVibeBtn');
+  if(vibeBtn) vibeBtn.textContent = 'PLAY VIBE';
   const raw = document.getElementById('musicUrlInput').value.trim();
   const area = document.getElementById('musicEmbedArea');
   if(!raw){ area.textContent='paste a link first.'; return; }
