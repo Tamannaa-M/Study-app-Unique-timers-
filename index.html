@@ -469,8 +469,9 @@ svg{shape-rendering:crispEdges;}
     <div class="takeoff-card">
       <div class="takeoff-kicker" id="takeoffKicker">NOW BOARDING</div>
       <div class="takeoff-media-wrap">
-        <video id="takeoffVideo" playsinline muted style="display:none;"></video>
-        <canvas id="takeoffCanvas" width="280" height="180"></canvas>
+        <video id="takeoffVideo" src="resource/generate_me_a_small_pixel_flig.mp4" preload="auto" playsinline muted style="width:100%; height:100%; object-fit:cover; display:block; background:#1b1928;"></video>
+        <video id="landingVideo" src="resource/make_it_a_smooth_landing_it_sh.mp4" preload="auto" playsinline muted style="width:100%; height:100%; object-fit:cover; display:none; background:#1b1928;"></video>
+        <canvas id="takeoffCanvas" width="280" height="180" style="display:none;"></canvas>
       </div>
       <div id="takeoffRoute">MUMBAI → TOKYO</div>
       <div id="takeoffMessage">TAKING OFF TO TOKYO...</div>
@@ -1640,155 +1641,36 @@ document.getElementById('startSessionBtn').addEventListener('click', ()=>{
   else beginSession();
 });
 
-/* ============================= FLIGHT ANIMATIONS: TAKEOFF & LANDING ============================= */
-let takeoffAnimId = null;
-
-function animatePixelTakeoff(canvas, callback){
-  const c = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
-  const start = performance.now();
-  const duration = 2800; // 2.8s smooth takeoff
-
-  function render(now){
-    const elapsed = now - start;
-    const p = Math.min(1, elapsed / duration);
-
-    c.clearRect(0,0,W,H);
-
-    // Sky gradient transition from runway dusk to high altitude
-    const sky = c.createLinearGradient(0,0,0,H);
-    sky.addColorStop(0, p < 0.5 ? '#1a2238' : '#2b4468');
-    sky.addColorStop(1, p < 0.5 ? '#d4786a' : '#f5b584');
-    c.fillStyle = sky;
-    c.fillRect(0,0,W,H);
-
-    // Distant mountain skyline sinking down as plane climbs
-    c.fillStyle = '#221929';
-    c.beginPath();
-    c.moveTo(0, H);
-    for(let x=0; x<=W; x+=20){
-      const my = H*(0.65 + p*0.25) + Math.sin(x*0.05)*15;
-      c.lineTo(x, my);
-    }
-    c.lineTo(W, H);
-    c.closePath();
-    c.fill();
-
-    // Fast scrolling runway lights (only in first 40% of takeoff)
-    if(p < 0.45){
-      const runP = p / 0.45;
-      const groundY = H*(0.75 + runP*0.3);
-      c.fillStyle = '#1e1c28';
-      c.fillRect(0, groundY, W, H - groundY);
-      
-      // Runway centerline streaks
-      c.fillStyle = '#ffdf78';
-      for(let i=0; i<8; i++){
-        const rx = ((i*60 - elapsed*1.4) % (W + 60) + W + 60) % (W + 60) - 30;
-        c.fillRect(rx, groundY + 12, 28, 3);
-      }
-      // Green runway threshold lights
-      c.fillStyle = '#55ff88';
-      for(let i=0; i<W; i+=35){
-        c.fillRect(i, groundY + 4, 6, 2);
-      }
-    }
-
-    // Billowing fluffy clouds passing by
-    c.fillStyle = 'rgba(255, 255, 255, 0.45)';
-    for(let i=0; i<6; i++){
-      const cx = ((i*90 - elapsed*0.4) % (W + 120) + W + 120) % (W + 120) - 60;
-      const cy = H*0.4 + (i%3)*25 + p*20;
-      c.beginPath();
-      c.arc(cx, cy, 26, 0, Math.PI*2);
-      c.arc(cx+22, cy-6, 32, 0, Math.PI*2);
-      c.arc(cx+45, cy+4, 24, 0, Math.PI*2);
-      c.fill();
-    }
-
-    // Pixel Airliner climbing & banking upward
-    c.save();
-    const planeX = W*0.2 + p * W*0.55;
-    const planeY = p < 0.35 ? (H*0.68 - p*30) : (H*0.58 - (p-0.35)*110);
-    const pitch = -0.15 - p*0.22;
-    
-    c.translate(planeX, planeY);
-    c.rotate(pitch);
-
-    // Jet engine heat blur / trail
-    c.fillStyle = 'rgba(255, 200, 100, 0.6)';
-    c.fillRect(-38, 4, 22, 3);
-    c.fillStyle = 'rgba(255, 120, 50, 0.4)';
-    c.fillRect(-55, 3, 20, 5);
-
-    // Fuselage
-    c.fillStyle = '#f0edf4';
-    c.fillRect(-28, -6, 56, 12);
-    // Belly shadow
-    c.fillStyle = '#a29ba8';
-    c.fillRect(-28, 3, 56, 3);
-    // Red airline cheatline
-    c.fillStyle = '#d94c44';
-    c.fillRect(-28, 0, 56, 2);
-    // Cockpit
-    c.fillStyle = '#221b2a';
-    c.fillRect(18, -4, 6, 4);
-    // Windows
-    for(let w=0; w<4; w++) c.fillRect(-18 + w*8, -3, 3, 3);
-    // Wing
-    c.fillStyle = '#c5bdcb';
-    c.beginPath();
-    c.moveTo(-4, 0); c.lineTo(-24, 18); c.lineTo(-14, 19); c.lineTo(8, 4);
-    c.closePath(); c.fill();
-    // Tail
-    c.fillStyle = '#d94c44';
-    c.beginPath();
-    c.moveTo(-28, -6); c.lineTo(-38, -18); c.lineTo(-30, -18); c.lineTo(-20, -6);
-    c.closePath(); c.fill();
-
-    // Flashing wing beacon
-    if(Math.floor(elapsed / 250) % 2 === 0){
-      c.fillStyle = '#ff2b38';
-      c.beginPath(); c.arc(-24, 18, 2, 0, Math.PI*2); c.fill();
-    }
-
-    c.restore();
-
-    // Altitude indicator HUD text
-    const alt = Math.round(p * 35000);
-    c.fillStyle = 'rgba(20, 18, 30, 0.75)';
-    c.fillRect(8, 8, 120, 20);
-    c.fillStyle = '#ffe29c';
-    c.font = '9px monospace';
-    c.fillText('CLIMB ' + alt.toLocaleString() + ' FT', 14, 22);
-
-    if(p < 1){
-      takeoffAnimId = requestAnimationFrame(render);
-    } else {
-      if(callback) callback();
-    }
-  }
-
-  takeoffAnimId = requestAnimationFrame(render);
-}
-
+/* ============================= FLIGHT VIDEO TAKEOFF / LANDING ============================= */
 function beginTakeoff(){
   const route = state.flightRoute || { from:'Mumbai', to:'Tokyo', label:'MUMBAI → TOKYO' };
   document.getElementById('takeoffKicker').textContent = 'DEPARTING ' + route.from.toUpperCase();
   document.getElementById('takeoffRoute').textContent = route.label;
   document.getElementById('takeoffMessage').textContent = 'TAKING OFF TO ' + route.to.toUpperCase() + '...';
   
-  const video = document.getElementById('takeoffVideo');
+  const vTakeoff = document.getElementById('takeoffVideo');
+  const vLanding = document.getElementById('landingVideo');
   const canvas = document.getElementById('takeoffCanvas');
   
-  video.style.display = 'none';
-  canvas.style.display = 'block';
+  if(vLanding) vLanding.style.display = 'none';
+  if(canvas) canvas.style.display = 'none';
+  if(vTakeoff){
+    vTakeoff.style.display = 'block';
+    vTakeoff.currentTime = 0;
+  }
+  
   showScreen('takeoffScreen');
   
   let done = false;
+  let safetyTimeout = null;
+
   const finish = ()=>{
     if(done) return;
     done = true;
-    if(takeoffAnimId) cancelAnimationFrame(takeoffAnimId);
+    if(safetyTimeout) clearTimeout(safetyTimeout);
+    if(vTakeoff){
+      try{ vTakeoff.pause(); }catch(e){}
+    }
     beginSession();
   };
 
@@ -1796,98 +1678,62 @@ function beginTakeoff(){
   document.getElementById('takeoffScreen').onclick = finish;
   window.addEventListener('keydown', finish, { once:true });
 
-  // Run smooth real-time pixel flight animation
-  animatePixelTakeoff(canvas, finish);
+  if(vTakeoff){
+    vTakeoff.onended = finish;
+    vTakeoff.play().catch(()=>{
+      safetyTimeout = setTimeout(finish, 3200);
+    });
+    // Safety timeout in case ended doesn't fire
+    safetyTimeout = setTimeout(finish, 4200);
+  } else {
+    finish();
+  }
 }
 
 function playLandingSequence(callback){
   const route = state.flightRoute || { from:'Mumbai', to:'Tokyo', label:'MUMBAI → TOKYO' };
   document.getElementById('takeoffKicker').textContent = 'PREPARE FOR ARRIVAL';
   document.getElementById('takeoffRoute').textContent = route.label;
-  document.getElementById('takeoffMessage').textContent = 'TOUCHDOWN IN ' + route.to.toUpperCase() + '...';
+  document.getElementById('takeoffMessage').textContent = 'LANDING IN ' + route.to.toUpperCase() + '...';
 
-  const video = document.getElementById('takeoffVideo');
+  const vTakeoff = document.getElementById('takeoffVideo');
+  const vLanding = document.getElementById('landingVideo');
   const canvas = document.getElementById('takeoffCanvas');
   
-  video.style.display = 'none';
-  canvas.style.display = 'block';
+  if(vTakeoff) vTakeoff.style.display = 'none';
+  if(canvas) canvas.style.display = 'none';
+  if(vLanding){
+    vLanding.style.display = 'block';
+    vLanding.currentTime = 0;
+  }
+  
   showScreen('takeoffScreen');
 
   let done = false;
+  let safetyTimeout = null;
+
   const finish = ()=>{
     if(done) return;
     done = true;
-    if(takeoffAnimId) cancelAnimationFrame(takeoffAnimId);
+    if(safetyTimeout) clearTimeout(safetyTimeout);
+    if(vLanding){
+      try{ vLanding.pause(); }catch(e){}
+    }
     if(callback) callback();
   };
 
   document.getElementById('takeoffScreen').onclick = finish;
   window.addEventListener('keydown', finish, { once:true });
 
-  // Smooth descent animation
-  const c = canvas.getContext('2d'), W = canvas.width, H = canvas.height;
-  const start = performance.now(), duration = 2400;
-
-  function renderLanding(now){
-    const elapsed = now - start;
-    const p = Math.min(1, elapsed / duration);
-    c.clearRect(0,0,W,H);
-
-    // Destination twilight sky
-    const sky = c.createLinearGradient(0,0,0,H);
-    sky.addColorStop(0, '#1c2438');
-    sky.addColorStop(1, '#c57860');
-    c.fillStyle = sky;
-    c.fillRect(0,0,W,H);
-
-    // City lights on horizon
-    c.fillStyle = '#221a2c';
-    c.fillRect(0, H*0.65, W, H*0.35);
-    for(let i=0; i<30; i++){
-      c.fillStyle = (i%2 ? '#ffdf78' : '#78d4ff');
-      c.fillRect((i*17)%W, H*0.68 + (i%5)*4, 3, 3);
-    }
-
-    // Runway
-    const rwY = H*0.78;
-    c.fillStyle = '#14121a';
-    c.fillRect(0, rwY, W, H-rwY);
-    c.fillStyle = '#ffea88';
-    for(let i=0; i<W; i+=30){
-      c.fillRect(i, rwY+8, 16, 2);
-    }
-
-    // Airplane touching down
-    c.save();
-    const planeX = W*0.15 + p * W*0.6;
-    const planeY = H*0.48 + p * (rwY - H*0.52);
-    c.translate(planeX, planeY);
-    c.rotate(0.08 * (1-p));
-
-    c.fillStyle = '#f0edf4'; c.fillRect(-28, -6, 56, 12);
-    c.fillStyle = '#a29ba8'; c.fillRect(-28, 3, 56, 3);
-    c.fillStyle = '#d94c44'; c.fillRect(-28, 0, 56, 2);
-    c.fillStyle = '#221b2a'; c.fillRect(18, -4, 6, 4);
-    c.fillStyle = '#c5bdcb';
-    c.beginPath(); c.moveTo(-4, 0); c.lineTo(-24, 18); c.lineTo(-14, 19); c.lineTo(8, 4); c.closePath(); c.fill();
-    c.fillStyle = '#d94c44';
-    c.beginPath(); c.moveTo(-28, -6); c.lineTo(-38, -18); c.lineTo(-30, -18); c.lineTo(-20, -6); c.closePath(); c.fill();
-    
-    // Tire smoke puff at touchdown (p > 0.8)
-    if(p > 0.8){
-      c.fillStyle = 'rgba(230, 230, 240, 0.7)';
-      c.beginPath(); c.arc(-14, 14, 6 + (p-0.8)*25, 0, Math.PI*2); c.fill();
-    }
-    c.restore();
-
-    if(p < 1){
-      takeoffAnimId = requestAnimationFrame(renderLanding);
-    } else {
-      finish();
-    }
+  if(vLanding){
+    vLanding.onended = finish;
+    vLanding.play().catch(()=>{
+      safetyTimeout = setTimeout(finish, 3500);
+    });
+    safetyTimeout = setTimeout(finish, 4500);
+  } else {
+    finish();
   }
-
-  takeoffAnimId = requestAnimationFrame(renderLanding);
 }
 
 /* ============================= SESSION LOGIC ============================= */
