@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<title>While It Lasts — Cozy Focus Timer</title>
+<title>While It Lasts</title>
 <meta name="description" content="A cozy focus timer with melting ice, sculptural candles, mystery flights, hidden timers and retro study spaces.">
 <meta name="theme-color" content="#242a44">
 <meta property="og:title" content="While It Lasts — Cozy Focus Timer">
@@ -2004,7 +2004,7 @@ function tick(){
   }
 
   document.body.classList.toggle('session-paused', state.paused);
-  document.title = (state.paused ? '⏸ ' : '') + (timerConcealed ? 'FOCUS IN PROGRESS' : fmtHMS(remainingReal)+' left') + ' · While It Lasts';
+  document.title = (state.paused ? '⏸ ' : '') + 'While It Lasts';
 
   if(progress >= 1 && !state.finished && !state.landing){
     if(state.family === 'flight'){
