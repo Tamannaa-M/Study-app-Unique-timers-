@@ -428,6 +428,11 @@ svg{shape-rendering:crispEdges;}
           <div class="card-whisper">destination & flight time unknown.</div>
         </div>
       </div>
+      <div class="random-choice-row" style="margin-top:14px; margin-bottom:10px; text-align:center;">
+        <button class="pixel-btn primary" id="cantChooseBtn" style="font-size:10px; padding:10px 18px; cursor:pointer;">
+          🎲 CAN'T CHOOSE? NO WORRIES · RANDOM PICK
+        </button>
+      </div>
       <div class="welcome-steps">
         <span>01 / PICK AN OBJECT</span>
         <span>02 / SETTLE IN</span>
@@ -581,6 +586,46 @@ svg{shape-rendering:crispEdges;}
         <button class="pixel-btn small" id="warnYes">no</button>
         <button class="pixel-btn small primary" id="warnObviously">obviously</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- RANDOM / CAN'T CHOOSE MODAL -->
+<div class="overlay" id="randomOverlay">
+  <div class="pixel-window modal-window" style="max-width:480px; width:92vw;">
+    <div class="pixel-titlebar"><span>CAN'T CHOOSE? NO WORRIES</span><div class="tb-btns"><div class="tb-btn" data-close="randomOverlay">X</div></div></div>
+    <div class="pixel-window-body" style="padding:16px;">
+      <div style="font-size:11px; color:var(--outline); line-height:1.5; margin-bottom:14px;">
+        Tell us how much time you have available today, and we'll surprise you with a random object & secret focus duration!
+      </div>
+      
+      <!-- Preset range buttons -->
+      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;" id="randomRangePresets">
+        <button class="pixel-btn small random-preset" data-max="1" data-min="0.25">0 – 1 HR</button>
+        <button class="pixel-btn small random-preset primary" data-max="2" data-min="0.5">0 – 2 HRS</button>
+        <button class="pixel-btn small random-preset" data-max="4" data-min="1.5">2 – 4 HRS</button>
+        <button class="pixel-btn small random-preset" data-max="8" data-min="3.5">4 – 8 HRS</button>
+      </div>
+
+      <!-- Interactive Duration Slider -->
+      <div style="background:var(--cream-dark); border:2px solid var(--outline); padding:10px; margin-bottom:14px;">
+        <div style="display:flex; justify-content:space-between; font-family:var(--pixel-font); font-size:9px; margin-bottom:6px;">
+          <span>AVAILABLE TIME:</span>
+          <span id="randomSliderLabel" style="color:var(--navy);">UP TO 2 HOURS</span>
+        </div>
+        <input type="range" id="randomHourSlider" min="0.5" max="8" step="0.25" value="2" style="width:100%; accent-color:var(--yellow); cursor:pointer;">
+        <div style="display:flex; justify-content:space-between; font-size:9px; color:#6b5d52; margin-top:4px;">
+          <span>30m</span><span>2h</span><span>4h</span><span>6h</span><span>8h</span>
+        </div>
+      </div>
+
+      <div style="font-size:10px; color:#5c4e43; margin-bottom:14px; font-style:italic;">
+        💡 E.g. with 0–2 hrs, you might get 30m, 45m, 1h, or 1h 20m with a matching mystery candle, ice cube, or flight.
+      </div>
+
+      <button class="pixel-btn primary" id="rollRandomBtn" style="width:100%; font-size:11px; padding:12px;">
+        🎲 ROLL & ASSIGN MY OBJECT
+      </button>
     </div>
   </div>
 </div>
@@ -837,11 +882,20 @@ function saveHistorySession(record){
 }
 
 /* ============================= SCREEN SWITCHING ============================= */
+function closeAllFloats(){
+  document.querySelectorAll('.float-window').forEach(el=>{
+    closeFloat(el.id);
+  });
+}
+
 function showScreen(id){
   document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
   const target = document.getElementById(id);
   if(target) target.classList.add('active');
   state.screen = id;
+  if(id !== 'session'){
+    closeAllFloats();
+  }
 }
 
 function runBoot(){
@@ -2684,6 +2738,98 @@ function decorateWelcome(){
   const bg3 = document.getElementById('preBg');
   if(bg3) drawExtraSpace('library', bg3);
 }
+
+/* ============================= RANDOM PICKER: CAN'T CHOOSE ============================= */
+let currentRandomMin = 0.5, currentRandomMax = 2;
+
+document.getElementById('cantChooseBtn')?.addEventListener('click', ()=>{
+  openOverlay('randomOverlay');
+});
+
+document.querySelectorAll('.random-preset').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.random-preset').forEach(b=>b.classList.remove('primary'));
+    btn.classList.add('primary');
+    currentRandomMin = parseFloat(btn.getAttribute('data-min'));
+    currentRandomMax = parseFloat(btn.getAttribute('data-max'));
+    const slider = document.getElementById('randomHourSlider');
+    if(slider) slider.value = currentRandomMax;
+    updateRandomSliderLabel(currentRandomMax);
+  });
+});
+
+const randomHourSlider = document.getElementById('randomHourSlider');
+if(randomHourSlider){
+  randomHourSlider.addEventListener('input', ()=>{
+    currentRandomMax = parseFloat(randomHourSlider.value);
+    currentRandomMin = Math.max(0.25, currentRandomMax * 0.3);
+    document.querySelectorAll('.random-preset').forEach(b=>b.classList.remove('primary'));
+    updateRandomSliderLabel(currentRandomMax);
+  });
+}
+
+function updateRandomSliderLabel(hrs){
+  const label = document.getElementById('randomSliderLabel');
+  if(!label) return;
+  if(hrs < 1) label.textContent = 'UP TO ' + Math.round(hrs * 60) + ' MINS';
+  else if(hrs === 1) label.textContent = 'UP TO 1 HOUR';
+  else if(hrs % 1 === 0) label.textContent = 'UP TO ' + hrs + ' HOURS';
+  else label.textContent = 'UP TO ' + Math.floor(hrs) + 'H ' + Math.round((hrs % 1) * 60) + 'M';
+}
+
+document.getElementById('rollRandomBtn')?.addEventListener('click', ()=>{
+  pickRandomRitual(currentRandomMin, currentRandomMax);
+});
+
+function pickRandomRitual(minHours, maxHours){
+  const minSec = Math.round(minHours * 3600);
+  const maxSec = Math.round(maxHours * 3600);
+  
+  // Pick random seconds in increments of 5 minutes (300s)
+  const steps = Math.max(1, Math.floor((maxSec - minSec) / 300));
+  const chosenSeconds = minSec + Math.floor(Math.random() * (steps + 1)) * 300;
+  
+  // Randomly pick family: ice, candle, flight
+  const families = ['ice', 'candle', 'flight'];
+  const family = families[Math.floor(Math.random() * families.length)];
+  
+  state.family = family;
+  state.duration = chosenSeconds;
+  
+  if(family === 'flight'){
+    const tickets = [
+      { to:'Delhi', code:'DEL', label:'MUMBAI → DELHI' },
+      { to:'Singapore', code:'SIN', label:'MUMBAI → SINGAPORE' },
+      { to:'Seoul', code:'ICN', label:'MUMBAI → SEOUL' },
+      { to:'Tokyo', code:'HND', label:'MUMBAI → TOKYO' },
+      { to:'Paris', code:'CDG', label:'MUMBAI → PARIS' },
+      { to:'Reykjavík', code:'KEF', label:'MUMBAI → REYKJAVÍK' },
+    ];
+    const idx = Math.min(tickets.length - 1, Math.floor((chosenSeconds / (8 * 3600)) * tickets.length));
+    const pick = tickets[idx];
+    state.flightRoute = { from:'Mumbai', to:pick.to, label:pick.label };
+    state.sizeKey = 'flight';
+  } else {
+    // Map chosenSeconds to appropriate tier:
+    let tierKey = 'small';
+    if(chosenSeconds > 27000) tierKey = 'giant';
+    else if(chosenSeconds > 12600) tierKey = 'xl';
+    else if(chosenSeconds > 5400) tierKey = 'large';
+    else if(chosenSeconds > 2100) tierKey = 'medium';
+    
+    state.sizeKey = tierKey;
+  }
+  
+  closeOverlay('randomOverlay');
+  
+  if(family === 'flight'){
+    openFlightPrecompose();
+  } else {
+    const def = OBJECTS[family][state.sizeKey];
+    openPrecompose(def, state.sizeKey);
+  }
+}
+
 
 /* ============================= INIT ============================= */
 function initApp(){
