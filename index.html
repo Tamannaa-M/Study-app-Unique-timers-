@@ -599,22 +599,14 @@ svg{shape-rendering:crispEdges;}
         Tell us how much time you have available today, and we'll surprise you with a random object & secret focus duration!
       </div>
       
-      <!-- Preset range buttons -->
-      <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px;" id="randomRangePresets">
-        <button class="pixel-btn small random-preset" data-max="1" data-min="0.25">0 – 1 HR</button>
-        <button class="pixel-btn small random-preset primary" data-max="2" data-min="0.5">0 – 2 HRS</button>
-        <button class="pixel-btn small random-preset" data-max="4" data-min="1.5">2 – 4 HRS</button>
-        <button class="pixel-btn small random-preset" data-max="8" data-min="3.5">4 – 8 HRS</button>
-      </div>
-
       <!-- Interactive Duration Slider -->
-      <div style="background:var(--cream-dark); border:2px solid var(--outline); padding:10px; margin-bottom:14px;">
-        <div style="display:flex; justify-content:space-between; font-family:var(--pixel-font); font-size:9px; margin-bottom:6px;">
-          <span>AVAILABLE TIME:</span>
-          <span id="randomSliderLabel" style="color:var(--navy);">UP TO 2 HOURS</span>
+      <div style="background:var(--cream-dark); border:3px solid var(--outline); padding:14px; margin-bottom:16px; box-shadow:3px 3px 0 var(--outline);">
+        <div style="display:flex; justify-content:space-between; font-family:var(--pixel-font); font-size:10px; margin-bottom:10px;">
+          <span>MAX STUDY TIME:</span>
+          <span id="randomSliderLabel" style="color:var(--navy); font-weight:bold;">UP TO 2 HOURS</span>
         </div>
-        <input type="range" id="randomHourSlider" min="0.5" max="8" step="0.25" value="2" style="width:100%; accent-color:var(--yellow); cursor:pointer;">
-        <div style="display:flex; justify-content:space-between; font-size:9px; color:#6b5d52; margin-top:4px;">
+        <input type="range" id="randomHourSlider" min="0.5" max="8" step="0.25" value="2" style="width:100%; accent-color:var(--yellow); cursor:pointer; height:20px;">
+        <div style="display:flex; justify-content:space-between; font-family:var(--pixel-font); font-size:8px; color:#6b5d52; margin-top:6px;">
           <span>30m</span><span>2h</span><span>4h</span><span>6h</span><span>8h</span>
         </div>
       </div>
@@ -2740,30 +2732,16 @@ function decorateWelcome(){
 }
 
 /* ============================= RANDOM PICKER: CAN'T CHOOSE ============================= */
-let currentRandomMin = 0.5, currentRandomMax = 2;
+let currentRandomMax = 2;
 
 document.getElementById('cantChooseBtn')?.addEventListener('click', ()=>{
   openOverlay('randomOverlay');
-});
-
-document.querySelectorAll('.random-preset').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.random-preset').forEach(b=>b.classList.remove('primary'));
-    btn.classList.add('primary');
-    currentRandomMin = parseFloat(btn.getAttribute('data-min'));
-    currentRandomMax = parseFloat(btn.getAttribute('data-max'));
-    const slider = document.getElementById('randomHourSlider');
-    if(slider) slider.value = currentRandomMax;
-    updateRandomSliderLabel(currentRandomMax);
-  });
 });
 
 const randomHourSlider = document.getElementById('randomHourSlider');
 if(randomHourSlider){
   randomHourSlider.addEventListener('input', ()=>{
     currentRandomMax = parseFloat(randomHourSlider.value);
-    currentRandomMin = Math.max(0.25, currentRandomMax * 0.3);
-    document.querySelectorAll('.random-preset').forEach(b=>b.classList.remove('primary'));
     updateRandomSliderLabel(currentRandomMax);
   });
 }
@@ -2778,7 +2756,8 @@ function updateRandomSliderLabel(hrs){
 }
 
 document.getElementById('rollRandomBtn')?.addEventListener('click', ()=>{
-  pickRandomRitual(currentRandomMin, currentRandomMax);
+  const minHrs = Math.max(0.25, currentRandomMax * 0.25);
+  pickRandomRitual(minHrs, currentRandomMax);
 });
 
 function pickRandomRitual(minHours, maxHours){
