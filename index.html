@@ -550,9 +550,12 @@ svg{shape-rendering:crispEdges;}
   <div class="pixel-window modal-window">
     <div class="pixel-titlebar"><span>CHOOSE A SPACE</span><div class="tb-btns"><div class="tb-btn" data-close="spaceOverlay">X</div></div></div>
     <div class="pixel-window-body">
-      <div class="settings-row" style="padding:6px 0; border-bottom:2px dashed var(--outline); margin-bottom:12px; font-size:11px;">
+      <div class="settings-row" style="padding:6px 0; border-bottom:2px dashed var(--outline); margin-bottom:12px; font-size:11px; display:flex; justify-content:space-between; align-items:center;">
         <span>SPACE AMBIENT MUSIC</span>
-        <div class="toggle on" id="spaceMusicToggle" style="width:36px;height:20px;background:var(--cream-dark);border:2px solid var(--outline);position:relative;cursor:pointer;"><div class="knob" style="position:absolute;top:1px;left:17px;width:14px;height:14px;background:var(--outline);"></div></div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="range" id="spaceVolSlider" min="0" max="1" step="0.05" value="0.7" style="width:85px; accent-color:var(--navy); cursor:pointer;" title="Space music volume">
+          <div class="toggle on" id="spaceMusicToggle" style="width:36px;height:20px;background:var(--cream-dark);border:2px solid var(--outline);position:relative;cursor:pointer;"><div class="knob" style="position:absolute;top:1px;left:17px;width:14px;height:14px;background:var(--outline);"></div></div>
+        </div>
       </div>
       <div class="space-grid" id="spaceGrid"></div>
     </div>
@@ -677,6 +680,11 @@ svg{shape-rendering:crispEdges;}
     </div>
     <div id="musicEmbedArea">no track loaded yet.</div>
     <div class="music-suggestion" id="musicSuggestion"></div>
+    <div class="volume-slider-row" style="display:flex; align-items:center; gap:8px; margin-top:10px; padding:6px 8px; background:var(--cream-dark); border:2px solid var(--outline); font-size:10px;">
+      <span>🔊 VOL</span>
+      <input type="range" id="musicVolSlider" min="0" max="1" step="0.05" value="0.7" style="flex:1; accent-color:var(--navy); cursor:pointer;">
+      <span id="musicVolLabel" style="font-family:var(--pixel-font); font-size:9px; width:34px; text-align:right;">70%</span>
+    </div>
   </div>
 </div>
 
@@ -695,6 +703,11 @@ svg{shape-rendering:crispEdges;}
     </div>
     <div id="vinylEmbedArea" style="margin-top:8px;"></div>
     <div class="music-suggestion" id="vinylStatus">cozy vinyl player · ready</div>
+    <div class="volume-slider-row" style="display:flex; align-items:center; gap:8px; margin-top:10px; padding:6px 8px; background:var(--cream-dark); border:2px solid var(--outline); font-size:10px;">
+      <span>🔊 VOL</span>
+      <input type="range" id="vinylVolSlider" min="0" max="1" step="0.05" value="0.7" style="flex:1; accent-color:var(--navy); cursor:pointer;">
+      <span id="vinylVolLabel" style="font-family:var(--pixel-font); font-size:9px; width:34px; text-align:right;">70%</span>
+    </div>
   </div>
 </div>
 
@@ -2824,14 +2837,46 @@ document.getElementById('vinylLoadBtn').addEventListener('click', ()=>{
   }
 });
 
-/* ============================= SETTINGS ============================= */
-const masterSlider = document.getElementById('settingMasterVol');
-masterSlider.value = state.sounds.master;
-masterSlider.addEventListener('input', ()=>{
-  state.sounds.master = parseFloat(masterSlider.value);
-  if(spaceAudioPlayer) spaceAudioPlayer.volume = state.sounds.master * 0.75;
+/* ============================= SETTINGS & VOLUME CONTROLS ============================= */
+function updateAllVolumeSliders(val){
+  val = Math.max(0, Math.min(1, parseFloat(val) || 0.7));
+  state.sounds.master = val;
+  const pct = Math.round(val * 100) + '%';
+
+  const masterSlider = document.getElementById('settingMasterVol');
+  if(masterSlider) masterSlider.value = val;
+
+  const musicSlider = document.getElementById('musicVolSlider');
+  if(musicSlider) musicSlider.value = val;
+  const musicLabel = document.getElementById('musicVolLabel');
+  if(musicLabel) musicLabel.textContent = pct;
+
+  const vinylSlider = document.getElementById('vinylVolSlider');
+  if(vinylSlider) vinylSlider.value = val;
+  const vinylLabel = document.getElementById('vinylVolLabel');
+  if(vinylLabel) vinylLabel.textContent = pct;
+
+  const spaceSlider = document.getElementById('spaceVolSlider');
+  if(spaceSlider) spaceSlider.value = val;
+
+  if(spaceAudioPlayer){
+    spaceAudioPlayer.volume = Math.max(0, Math.min(1, val * 0.75));
+  }
+  if(vinylAudio){
+    vinylAudio.volume = Math.max(0, Math.min(1, val));
+  }
   saveSettings();
+}
+
+['settingMasterVol', 'musicVolSlider', 'vinylVolSlider', 'spaceVolSlider'].forEach(id=>{
+  const slider = document.getElementById(id);
+  if(slider){
+    slider.addEventListener('input', (e)=>{
+      updateAllVolumeSliders(e.target.value);
+    });
+  }
 });
+updateAllVolumeSliders(state.sounds.master !== undefined ? state.sounds.master : 0.7);
 
 const reducedMotionBox = document.getElementById('settingReducedMotion');
 reducedMotionBox.checked = !!state.sounds.reducedMotion;
