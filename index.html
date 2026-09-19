@@ -878,6 +878,7 @@ function showScreen(id){
   state.screen = id;
   if(id !== 'session'){
     closeAllFloats();
+    stopAllAudio();
   }
 }
 
@@ -2216,7 +2217,7 @@ function triggerFlightCrash(){
   state.finished = true;
   state.running = false;
   clearInterval(tickInterval);
-  stopSpaceMusic();
+  stopAllAudio();
 
   const record = {
     date: new Date().toISOString(),
@@ -2253,6 +2254,7 @@ function finishSession(abandoned){
   state.running = false;
   clearInterval(tickInterval);
   document.title = 'While It Lasts';
+  stopAllAudio();
 
   const def = currentDef();
   const record = {
@@ -2505,8 +2507,24 @@ function playSpaceMusic(spaceKey){
 
 function stopSpaceMusic(){
   if(spaceAudioPlayer){
-    try{ spaceAudioPlayer.pause(); }catch(e){}
+    try{
+      spaceAudioPlayer.pause();
+      spaceAudioPlayer.currentTime = 0;
+    }catch(e){}
   }
+}
+
+function stopAllAudio(){
+  stopSpaceMusic();
+  stopVinylPlayer();
+  const musicArea = document.getElementById('musicEmbedArea');
+  if(musicArea) musicArea.innerHTML = 'no track loaded yet.';
+  const vinylArea = document.getElementById('vinylEmbedArea');
+  if(vinylArea) vinylArea.innerHTML = '';
+  const v1 = document.getElementById('takeoffVideo');
+  if(v1){ try{ v1.pause(); }catch(e){} }
+  const v2 = document.getElementById('landingVideo');
+  if(v2){ try{ v2.pause(); }catch(e){} }
 }
 
 function applySpace(key){
